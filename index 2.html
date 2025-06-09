@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impossible Memo</title>
+  <style>
+    /* (estilos anteriores sin cambios) */
+    #scoreboard {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      color: #2d3436;
+    }
+    #scoreboard ul {
+      list-style: none;
+      padding: 0;
+    }
+    #scoreboard li {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="start-screen" class="screen">
+    <h2>Bienvenido al Impossible Memo</h2>
+    <button onclick="startGame(1)">Nivel 1 (Banderas)</button>
+    <button onclick="startGame(2)">Nivel 2 (Marcas)</button>
+  </div>
+
+  <h1>🧠 Impossible Memo</h1>
+  <div id="status">Intentos: 0</div>
+  <div class="board" id="board"></div>
+  <div id="scoreboard"><strong>🏅 Mejores puntajes:</strong><ul id="highscores"></ul></div>
+
+  <div id="victory-screen" class="screen">
+    <h2>🎉 ¡Ganaste!</h2>
+    <p id="victory-message"></p>
+    <button onclick="restartGame()">Jugar de nuevo</button>
+  </div>
+
+  <audio id="flip-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_4be1b6c823.mp3"></audio>
+  <audio id="victory-sound" src="https://cdn.pixabay.com/audio/2022/10/03/audio_48e4cfb7f2.mp3"></audio>
+
+  <script>
+    const levels = {
+      1: [
+        { name: "colombia", src: "https://flagcdn.com/w320/co.png" },
+        { name: "mexico", src: "https://flagcdn.com/w320/mx.png" },
+        { name: "brasil", src: "https://flagcdn.com/w320/br.png" },
+        { name: "usa", src: "https://flagcdn.com/w320/us.png" }
+      ],
+      2: [
+        { name: "apple", src: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" },
+        { name: "coca_cola", src: "https://upload.wikimedia.org/wikipedia/commons/1/1b/Coca-Cola_logo.svg" },
+        { name: "google", src: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" },
+        { name: "microsoft", src: "https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg" },
+        { name: "nike", src: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg" },
+        { name: "amazon", src: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" }
+      ]
+    };
+
+    let board = document.getElementById("board");
+    let status = document.getElementById("status");
+    let victoryScreen = document.getElementById("victory-screen");
+    let victoryMessage = document.getElementById("victory-message");
+    let startScreen = document.getElementById("start-screen");
+    let flipSound = document.getElementById("flip-sound");
+    let victorySound = document.getElementById("victory-sound");
+    let firstCard = null;
+    let lock = false;
+    let matches = 0;
+    let attempts = 0;
+    let currentLevel = 1;
+    let activeFlags = [];
+
+    function showVictoryScreen() {
+      victoryMessage.innerText = `Terminaste en ${attempts} intentos.`;
+      victoryScreen.style.display = 'flex';
+      victorySound.play();
+      saveHighscore(attempts);
+    }
+
+    function createGame() {
+      board.innerHTML = "";
+      status.innerText = `Intentos: ${attempts}`;
+      firstCard = null;
+      lock = false;
+      matches = 0;
+      const cards = [...activeFlags, ...activeFlags].sort(() => 0.5 - Math.random());
+
+      cards.forEach((flag) => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.name = flag.name;
+
+        const img = document.createElement("img");
+        img.src = flag.src;
+        card.appendChild(img);
+
+        card.addEventListener("click", () => {
+          if (lock || card.classList.contains("flipped")) return;
+
+          flipSound.currentTime = 0;
+          flipSound.play();
+          card.classList.add("flipped");
+
+          if (!firstCard) {
+            firstCard = card;
+          } else {
+            lock = true;
+            attempts++;
+            status.innerText = `Intentos: ${attempts}`;
+
+            if (firstCard.dataset.name === card.dataset.name) {
+              matches++;
+              firstCard = null;
+              lock = false;
+
+              if (matches === activeFlags.length) {
+                showVictoryScreen();
+              }
+            } else {
+              setTimeout(() => {
+                createGame();
+              }, 1000);
+            }
+          }
+        });
+
+        board.appendChild(card);
+      });
+    }
+
+    function startGame(level) {
+      currentLevel = level;
+      activeFlags = levels[level];
+      attempts = 0;
+      startScreen.style.display = 'none';
+      loadHighscores();
+      createGame();
+    }
+
+    function restartGame() {
+      victoryScreen.style.display = 'none';
+      attempts = 0;
+      createGame();
+    }
+
+    function saveHighscore(score) {
+      const key = `memo_scores_level_${currentLevel}`;
+      let scores = JSON.parse(localStorage.getItem(key)) || [];
+      scores.push(score);
+      scores.sort((a, b) => a - b);
+      scores = scores.slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(scores));
+      loadHighscores();
+    }
+
+    function loadHighscores() {
+      const key = `memo_scores_level_${currentLevel}`;
+      const scores = JSON.parse(localStorage.getItem(key)) || [];
+      const list = document.getElementById("highscores");
+      list.innerHTML = "";
+      scores.forEach(score => {
+        const li = document.createElement("li");
+        li.textContent = `${score} intentos`;
+        list.appendChild(li);
+      });
+    }
+
+    window.onload = () => {
+      startScreen.style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
